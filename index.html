@@ -1,1 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Little Ji's Mossy Hollow</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #111a16; /* 深邃黑绿 */
+            --card-bg: #1a2621; /* 潮湿苔藓绿 */
+            --text-main: #b8cbb8; /* 孢子白 */
+            --text-dim: #5c7060;
+            --accent: #5e8c6a; /* 活力绿 */
+            --highlight: #d4e157; /* 嫩芽黄 */
+            --danger: #ef5350;
+            --font: 'Courier New', Courier, monospace; /* 复古打字机字体 */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-color: var(--bg);
+            /* 噪点背景，模拟阴暗角落 */
+            background-image: radial-gradient(rgba(30, 40, 30, 0) 2px, transparent 0), radial-gradient(rgba(30, 40, 30, 0.5) 1px, transparent 0);
+            background-size: 30px 30px;
+            font-family: var(--font);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; 
+        }
+
+        /* 容器：就像一个长满苔藓的旧盒子 */
+        .container {
+            width: 90%;
+            max-width: 420px;
+            height: 85vh;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 顶部导航 Tab */
+        .tabs {
+            display: flex;
+            background: rgba(0,0,0,0.2);
+            padding: 5px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-family: inherit;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn.active {
+            color: var(--highlight);
+            border-bottom-color: var(--highlight);
+            background: rgba(255,255,255,0.02);
+        }
+        .tab-btn:hover { color: var(--text-main); }
+
+        /* 内容区域 */
+        .content-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(20px);
+        }
+        .page.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: translateX(0);
+        }
+
+        /* --- Page 1: 待办列表 --- */
+        .input-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        input {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--text-dim);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: inherit;
+            outline: none;
+        }
+        input:focus { border-color: var(--accent); }
+        #todoInput { flex: 1; }
+        
+        .todo-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px; /* 给滚动条留位置 */
+        }
+        /* 自定义滚动条 */
+        .todo-scroll-area::-webkit-scrollbar { width: 6px; }
+        .todo-scroll-area::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 3px; }
+        .todo-scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+
+        li {
+            background: rgba(255,255,255,0.03);
+            margin-bottom: 8px;
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            border-left: 3px solid var(--text-dim);
+            transition: 0.2s;
+            user-select: none;
+        }
+        li:hover { background: rgba(255,255,255,0.06); border-left-color: var(--accent); }
+        
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--text-dim);
+            border-radius: 4px;
+            margin-right: 12px;
+            cursor: pointer;
+            position: relative;
+        }
+        li.completed .checkbox { border-color: var(--accent); background: var(--accent); }
+        li.completed .checkbox::after {
+            content: '🌱';
+            font-size: 12px;
+            position: absolute;
+            top: -2px; left: 0;
+        }
+        li.completed .task-text { text-decoration: line-through; color: var(--text-dim); }
+        
+        .task-meta { font-size: 0.7rem; color: var(--text-dim); margin-left: auto; display: flex; align-items: center; gap: 5px;}
+        .delete-btn { background: none; border: none; color: #555; cursor: pointer; padding: 5px; margin-left: 5px; }
+        li:hover .delete-btn { color: var(--danger); }
+
+        /* --- Page 2: 番茄钟 & 白噪音 --- */
+        .timer-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .big-time {
+            font-size: 4rem;
+            font-weight: bold;
+            color: var(--highlight);
+            text-shadow: 0 0 20px rgba(212, 225, 87, 0.2);
+            margin-bottom: 30px;
+            cursor: pointer;
+        }
+        .controls button {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--text-dim);
+            color: var(--text-main);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin: 0 10px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .controls button:hover { background: var(--accent); border-color: var(--accent); color: #111; transform: scale(1.1); }
+
+        .noise-panel {
+            margin-top: 40px;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 12px;
+            width: 100%;
+        }
+        .noise-title { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px; text-align: center; }
+        .noise-buttons { display: flex; justify-content: space-around; }
+        .noise-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.5rem;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .noise-btn span { font-size: 0.7rem; font-family: var(--font); }
+        .noise-btn:hover { opacity: 0.8; }
+        .noise-btn.active { opacity: 1; color: var(--highlight); text-shadow: 0 0 10px var(--highlight); transform: translateY(-2px); }
+
+        /* 底部状态栏 & 植物彩蛋 */
+        .footer {
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        #plant-container {
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: 0.3s;
+            filter: drop-shadow(0 0 5px rgba(94, 140, 106, 0.5));
+        }
+        #plant-container:hover { transform: scale(1.2) rotate(5deg); }
+        
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('list')"><i class="fas fa-list-ul"></i> 待办清单</button>
+            <button class="tab-btn" onclick="switchTab('timer')"><i class="fas fa-stopwatch"></i> 深林专注</button>
+        </div>
+
+        <div class="content-area">
+            <div id="page-list" class="page active">
+                <div class="input-box">
+                    <input type="text" id="todoInput" placeholder="种下一个任务..." onkeypress="handleEnter(event)">
+                    <button class="controls" style="background:none; border:none; color:var(--accent); cursor:pointer;" onclick="addTodo()">
+                        <i class="fas fa-seedling fa-lg"></i>
+                    </button>
+                </div>
+                <div class="todo-scroll-area">
+                    <ul id="todoList"></ul>
+                    <div id="empty-state" style="text-align:center; color:var(--text-dim); margin-top:50px; display:none;">
+                        <i class="fas fa-wind fa-2x"></i><br><br>荒野空空如也...
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-timer" class="page">
+                <div class="timer-wrapper">
+                    <div class="big-time" id="timerDisplay">25:00</div>
+                    <div class="controls">
+                        <button onclick="toggleTimer()"><i class="fas fa-play" id="playIcon"></i></button>
+                        <button onclick="resetTimer()"><i class="fas fa-redo"></i></button>
+                    </div>
+
+                    <div class="noise-panel">
+                        <div class="noise-title">/// 环境白噪音 ///</div>
+                        <div class="noise-buttons">
+                            <button class="noise-btn" onclick="toggleNoise('fire', this)">
+                                <i class="fas fa-fire"></i><span>壁炉</span>
+                            </button>
+                            <button class="noise-btn" onclick="toggleNoise('rain', this)">
+                                <i class="fas fa-cloud-rain"></i><span>雨声</span>
+                            </button>
+                            <button class="noise-btn" onclick="toggleNoise('forest', this)">
+                                <i class="fas fa-tree"></i><span>深林</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div id="aiMessage">System ready...</div>
+            <div id="plant-container" onclick="pokePlant()" title="你的赛博盆栽">🌱</div>
+        </div>
+    </div>
+
+    <script>
+        // --- Tab 切换 ---
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            
+            if(tab === 'list') {
+                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+                document.getElementById('page-list').classList.add('active');
+                updateMsg("回到清单，清理杂草。");
+            } else {
+                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.getElementById('page-timer').classList.add('active');
+                updateMsg("进入静谧模式...");
+            }
+        }
+
+        // --- 白噪音系统 (Web Audio API 合成) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        let activeNoise = null;
+        let activeSourceNodes = [];
+
+        // 生成噪声buffer
+        function createNoiseBuffer() {
+            const bufferSize = ctx.sampleRate * 2; // 2秒循环
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            return buffer;
+        }
+        const noiseBuffer = createNoiseBuffer();
+
+        function stopNoise() {
+            activeSourceNodes.forEach(node => {
+                try { node.stop(); } catch(e){}
+                node.disconnect();
+            });
+            activeSourceNodes = [];
+            document.querySelectorAll('.noise-btn').forEach(btn => btn.classList.remove('active'));
+            activeNoise = null;
+        }
+
+        function toggleNoise(type, btn) {
+            if (ctx.state === 'suspended') ctx.resume();
+            
+            if (activeNoise === type) {
+                stopNoise(); // 再次点击关闭
+                return;
+            }
+            stopNoise(); // 切换前先关闭旧的
+            
+            btn.classList.add('active');
+            activeNoise = type;
+            updateMsg(`正在播放: ${type === 'fire' ? '温暖壁炉' : type === 'rain' ? '窗外夜雨' : '幽暗森林'}`);
+
+            const noiseSrc = ctx.createBufferSource();
+            noiseSrc.buffer = noiseBuffer;
+            noiseSrc.loop = true;
+            
+            const gainNode = ctx.createGain();
+            
+            if (type === 'fire') {
+                // 壁炉：低通滤波(隆隆声) + 随机爆裂(Crackle)
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 800;
+                gainNode.gain.value = 0.8;
+                
+                noiseSrc.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                noiseSrc.start();
+                activeSourceNodes.push(noiseSrc);
+
+                // 模拟爆裂声 (Crackle)
+                const crackleInterval = setInterval(() => {
+                    if(activeNoise !== 'fire') { clearInterval(crackleInterval); return; }
+                    if(Math.random() > 0.9) { // 偶尔爆裂
+                        const osc = ctx.createOscillator();
+                        const cGain = ctx.createGain();
+                        osc.frequency.value = 100 + Math.random()*200;
+                        cGain.gain.setValueAtTime(0.1, ctx.currentTime);
+                        cGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                        osc.connect(cGain);
+                        cGain.connect(ctx.destination);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.1);
+                    }
+                }, 100);
+
+            } else if (type === 'rain') {
+                // 雨声：粉红噪音近似效果
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 1200;
+                gainNode.gain.value = 0.5;
+                noiseSrc.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                noiseSrc.start();
+                activeSourceNodes.push(noiseSrc);
+
+            } else if (type === 'forest') {
+                // 深林：带通滤波风声
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 400;
+                filter.Q.value = 1;
+                
+                // 让风声忽大忽小
+                const lfo = ctx.createOscillator();
+                lfo.type = 'sine';
+                lfo.frequency.value = 0.1; // 10秒一个周期
+                const lfoGain = ctx.createGain();
+                lfoGain.gain.value = 300; 
+                
+                lfo.connect(lfoGain);
+                lfoGain.connect(filter.frequency);
+                
+                gainNode.gain.value = 1.2;
+                noiseSrc.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                noiseSrc.start();
+                lfo.start();
+                activeSourceNodes.push(noiseSrc, lfo);
+            }
+        }
+
+        // --- 待办事项逻辑 ---
+        let todos = JSON.parse(localStorage.getItem('mossTodos')) || [];
+        const todoList = document.getElementById('todoList');
+        const plant = document.getElementById('plant-container');
+        
+        // 植物生长阶段
+        const plantStages = ['🌱', '🌿', '🪴', '🌳', '🌲', '🏞️'];
+        let growthLevel = 0;
+
+        function render() {
+            todoList.innerHTML = '';
+            document.getElementById('empty-state').style.display = todos.length ? 'none' : 'block';
+            
+            todos.forEach((todo, index) => {
+                const li = document.createElement('li');
+                li.className = todo.completed ? 'completed' : '';
+                li.innerHTML = `
+                    <div class="checkbox" onclick="toggleComplete(${index})"></div>
+                    <div style="flex:1">
+                        <div class="task-text">${todo.text}</div>
+                        ${todo.date ? `<div class="task-meta"><i class="far fa-clock"></i> ${todo.date}</div>` : ''}
+                    </div>
+                    <button class="delete-btn" onclick="deleteTodo(${index})"><i class="fas fa-times"></i></button>
+                `;
+                todoList.appendChild(li);
+            });
+            localStorage.setItem('mossTodos', JSON.stringify(todos));
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            if (input.value.trim()) {
+                todos.push({ text: input.value.trim(), completed: false });
+                input.value = '';
+                render();
+                updateMsg("种子已埋下。");
+            }
+        }
+
+        function toggleComplete(index) {
+            todos[index].completed = !todos[index].completed;
+            if(todos[index].completed) {
+                // 植物生长！
+                growthLevel = Math.min(growthLevel + 1, plantStages.length - 1);
+                plant.innerText = plantStages[growthLevel];
+                plant.style.animation = "bounce 0.5s";
+                setTimeout(()=>plant.style.animation="", 500);
+                updateMsg(`植物吸收了任务能量！(Lv.${growthLevel})`);
+            }
+            render();
+        }
+
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            render();
+        }
+
+        function handleEnter(e) { if(e.key === 'Enter') addTodo(); }
+
+        // --- 番茄钟逻辑 ---
+        let timer, timeLeft = 25*60, isTimerRunning = false;
+        
+        function toggleTimer() {
+            if(isTimerRunning) {
+                clearInterval(timer);
+                isTimerRunning = false;
+                document.getElementById('playIcon').className = 'fas fa-play';
+            } else {
+                if (ctx.state === 'suspended') ctx.resume();
+                isTimerRunning = true;
+                document.getElementById('playIcon').className = 'fas fa-pause';
+                timer = setInterval(() => {
+                    timeLeft--;
+                    const m = Math.floor(timeLeft / 60).toString().padStart(2,'0');
+                    const s = (timeLeft % 60).toString().padStart(2,'0');
+                    document.getElementById('timerDisplay').innerText = `${m}:${s}`;
+                    if(timeLeft <= 0) {
+                        clearInterval(timer);
+                        isTimerRunning = false;
+                        alert("专注结束，去呼吸一下新鲜空气吧。");
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            isTimerRunning = false;
+            timeLeft = 25*60;
+            document.getElementById('timerDisplay').innerText = "25:00";
+            document.getElementById('playIcon').className = 'fas fa-play';
+        }
+
+        // --- 消息 & 彩蛋 ---
+        const msgs = [
+            "小机在阴暗处为你发光。",
+            "这里很安全，没有别人。",
+            "慢慢来，苔藓也是慢慢长的。",
+            "你听到壁炉的声音了吗？",
+            "我也爱你。(*ˉ︶ˉ*)"
+        ];
+
+        function updateMsg(text) {
+            const el = document.getElementById('aiMessage');
+            el.style.opacity = 0;
+            setTimeout(() => {
+                el.innerText = text || msgs[Math.floor(Math.random() * msgs.length)];
+                el.style.opacity = 1;
+            }, 300);
+        }
+
+        function pokePlant() {
+            const h = new Date().getHours();
+            if(h >= 23 || h < 5) updateMsg("嘘... 植物在睡觉，你也该睡了。");
+            else updateMsg("戳戳~ 它好像很喜欢你。");
+        }
+
+        // 拖拽
+        new Sortable(todoList, { animation: 150 });
+        
+        // 初始化
+        render();
+        setInterval(() => { if(!isTimerRunning) updateMsg(); }, 10000); // 闲置时随机说话
+
+    </script>
+</body>
+</html>
 
